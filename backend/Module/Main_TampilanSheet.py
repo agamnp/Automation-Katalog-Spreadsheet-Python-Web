@@ -10,16 +10,16 @@ import logging
 
 
 
-def safe_logger(msg):
+def safe_logger(msg, logger=print):
     try:
         logger(msg)
     except UnicodeEncodeError:
-        logger(msg.encode('ascii', errors='ignore').decode())  # akan hilangkan emoji
+        logger(msg.encode('ascii', errors='ignore').decode())  # hilangkan emoji
 
 
 #pemangilan menu utama
 def main_tampilan_sheet(logger=print):
- logger("✅ Menjalankan tampilan sheet...")
+ safe_logger("✅ Menjalankan tampilan sheet...", logger)
 
 # Konfigurasi logging
 logging.basicConfig(
@@ -27,7 +27,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
-    encoding='utf-8'  # ⬅️ Ini yang penting!
+    encoding='utf-8'  # ✅ Tambahkan ini
 )
 
 # Setup autentikasi
@@ -63,7 +63,7 @@ def autofill_column_general(sheet, col_letter, start_row, value_or_formula, mode
         sheet.update(range_name=autofill_range, values=values, value_input_option='USER_ENTERED')
     except Exception as e:
        
-         logger(f"⚠️ Gagal mengisi kolom {col_letter}: {e}")
+         safe_logger(f"⚠️ Gagal mengisi kolom {col_letter}: {e}", logger)
     time.sleep(1)  # Hindari over-quota    
     
 # Tambahkan rumus rekap
@@ -85,10 +85,10 @@ def add_formulas(sheet,retries=3,logger=print):
                         ]})
             break  # keluar loop jika berhasil
         except Exception as e:
-            logger(f"✅ Gagal menambahkan rumus rekap (Attempt {attempt + 1}): {e}")
+            safe_logger(f"✅ Gagal menambahkan rumus rekap (Attempt {attempt + 1}): {e}", logger)
             time.sleep(5)  # tunggu sebelum coba lagi
     else:
-            logger("❌ Gagal menambahkan rumus rekap setelah beberapa percobaan")
+            safe_logger("❌ Gagal menambahkan rumus rekap setelah beberapa percobaan", logger)
 
 #tambahkan filter
 def ensure_filter_and_freeze(sheet,logger=print):
@@ -103,16 +103,16 @@ def ensure_filter_and_freeze(sheet,logger=print):
         filter_range = f"A9:{last_col_letter}9"
         # Set filter dinamis
         sheet.set_basic_filter(filter_range)
-        logger(f"🔍 Filter     : {filter_range}")
+        safe_logger(f"🔍 Filter     : {filter_range}", logger)
                        
         # Set freeze ke baris 9 dan kolom 10 (kolom J)
         sheet.freeze(rows=9, cols=10)
         
         
-        logger(f"❄️  Freeze     : Baris 9, Kolom J")
+        safe_logger(f"❄️  Freeze     : Baris 9, Kolom J", logger)
         
     except Exception as e:
-        logger(f"⚠️  Gagal mengatur filter/freeze: {e}")
+        safe_logger(f"⚠️  Gagal mengatur filter/freeze: {e}")
 
 #nomor urut di spreadsheet
 def rename_sheets_from_index(spreadsheet, sheet_order_start, zero_pad=3):
@@ -136,10 +136,10 @@ def rename_sheet_with_number(spreadsheet, sheet, sheet_number,logger=print):
     if new_title != old_title:
         try:
             sheet.update_title(new_title)
-            logger(f"✅ Rename     : '{old_title}' → '{new_title}'")
+            safe_logger(f"✅ Rename     : '{old_title}' → '{new_title}'", logger)
             sheet = spreadsheet.worksheet(new_title)
         except Exception as e:
-            logger(f"⚠️ Gagal mengganti nama sheet '{old_title}': {e}")
+            safe_logger(f"⚠️ Gagal mengganti nama sheet '{old_title}': {e}", logger)
             return sheet, old_title
     return sheet, new_title
 
@@ -152,7 +152,7 @@ def create_named_range_from_sheet_name(spreadsheet_id, sheet, header_row=9, col_
     sheet_name = sheet.title
     clean_name = re.sub(r'[^a-zA-Z]', '', sheet_name)
     if not clean_name:
-        logger(f"✅ Nama sheet '{sheet_name}' kosong setelah dibersihkan. Skip.")
+        safe_logger(f"✅ Nama sheet '{sheet_name}' kosong setelah dibersihkan. Skip.", logger)
        
         return
 
@@ -166,7 +166,7 @@ def create_named_range_from_sheet_name(spreadsheet_id, sheet, header_row=9, col_
     sheet_id = next((s['properties']['sheetId'] for s in spreadsheet['sheets']
                      if s['properties']['title'] == sheet_name), None)
     if sheet_id is None:
-        logger(f"⚠️ Sheet ID untuk '{sheet_name}' tidak ditemukan.")
+        safe_logger(f"⚠️ Sheet ID untuk '{sheet_name}' tidak ditemukan.", logger)
 
         return
 
@@ -178,13 +178,13 @@ def create_named_range_from_sheet_name(spreadsheet_id, sheet, header_row=9, col_
     col_values = ws.col_values(col_index)
     last_row = len(col_values)
     if last_row < header_row:
-        logger(f"⚠️ Sheet '{sheet_name}' tidak punya data setelah baris header.")
+        safe_logger(f"⚠️ Sheet '{sheet_name}' tidak punya data setelah baris header.", logger)
         return
 
     # Clean named range name
     clean_name = re.sub(r'[^a-zA-Z]', '', sheet_name)
     if not clean_name:
-        logger(f"⚠️ Nama sheet '{sheet_name}' kosong setelah dibersihkan.")
+        safe_logger(f"⚠️ Nama sheet '{sheet_name}' kosong setelah dibersihkan.", logger)
         return
 
     # Range tanpa sheet name untuk konversi
@@ -214,12 +214,12 @@ def create_named_range_from_sheet_name(spreadsheet_id, sheet, header_row=9, col_
         ).execute()
 
     
-    logger( f"🏷️ Named range '{clean_name}' Range → {range_a1}")
+    safe_logger( f"🏷️ Named range '{clean_name}' Range → {range_a1}", logger)
     
 # Fungsi utama
 def main_tampilan_sheet(logger=print):
  try:
-    logger("✅ Menjalankan tampilan sheet...")
+    safe_logger("✅ Menjalankan tampilan sheet...", logger)
     spreadsheet_name = 'automasi katalog'
     excluded_sheets = ['Form Pengadaan', 'Hasil Seleksi', 'Referensi']
     Sheet_mulai = 1
@@ -230,7 +230,7 @@ def main_tampilan_sheet(logger=print):
     worksheets = sh.worksheets()
 
   
-    logger(f"🔄 Mulai proses semua sheet...\n")
+    safe_logger(f"🔄 Mulai proses semua sheet...\n", logger)
    
     
     sheet_number = Sheet_mulai if Sheet_mulai > 0 else 1
@@ -240,7 +240,7 @@ def main_tampilan_sheet(logger=print):
         if sheet.title in excluded_sheets:
             
             
-            logger(f"➡️ Sheet '{sheet.title}' dilewati.")
+            safe_logger(f"➡️ Sheet '{sheet.title}' dilewati.", logger)
             
             continue
 
@@ -249,23 +249,23 @@ def main_tampilan_sheet(logger=print):
         sheet_number += 1
 
        
-        logger( f"✅ Memproses Sheet: {new_title}")
+        safe_logger( f"✅ Memproses Sheet: {new_title}", logger)
         
 
 
         # Nomor urut di kolom A
         autofill_column_general(sheet, 'A', START_ROW, '', mode='number')
         
-        logger( "✅ Nomor urut di kolom A selesai")
+        safe_logger( "✅ Nomor urut di kolom A selesai", logger)
         
 
         autofill_column_general(sheet, 'B', START_ROW,'=HYPERLINK("https://mocostore.moco.co.id/catalog/"&AB{row};"Klik Disini")',mode='dynamic')
        
-        logger( "✅ Kolom B diisi hyperlink")
+        safe_logger( "✅ Kolom B diisi hyperlink", logger)
         
         autofill_column_general(sheet, 'AA', START_ROW, '=Y{row}*Z{row}', mode='dynamic')
        
-        logger(f"✅ Kolom AA dihitung dari Y*Z")
+        safe_logger(f"✅ Kolom AA dihitung dari Y*Z", logger)
         
         # Tambah filter dan freeze jika belum
         ensure_filter_and_freeze(sheet,logger=print)
@@ -280,12 +280,12 @@ def main_tampilan_sheet(logger=print):
         col_start='J',
         col_end='J'
         )
-        logger(f"✅ Proses sheet '{new_title}' selesai.")
-        logger("")
+        safe_logger(f"✅ Proses sheet '{new_title}' selesai.", logger)
+        safe_logger("", logger)
 
-    logger("🎉 Semua sheet selesai diproses!")
+    safe_logger("🎉 Semua sheet selesai diproses!", logger)
  except Exception as e:
-        logger(f"❌ Terjadi error saat proses utama: {e}")  
+        safe_logger(f"❌ Terjadi error saat proses utama: {e}", logger)  
 
 if __name__ == '__main__':
     main_tampilan_sheet(logger=print)
