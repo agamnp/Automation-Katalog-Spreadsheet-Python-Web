@@ -1,36 +1,57 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ========================
+# FRONTEND - Next.js
+# ========================
+# Dependencies
+/frontend/node_modules/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# Build output
+/frontend/.next/
+frontend/out/
 
-# testing
-/coverage
+# Environment variables
+/frontend/.env
+/frontend/.env.* 
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Log files
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
-.env
-
-# vercel
+# Config
 .vercel
 
-# typescript
+# ========================
+# BACKEND - Python
+# ========================
+# Byte-compiled / cache
+/backend/**/__pycache__/
+/backend/**/*.py[cod]
+
+# Virtual environment
+/backend/venv/
+/venv/
+
+# Environment variables & secrets
+/backend/.env
+/backend/.env.*
+/backend/Credentials.json
+
+# ========================
+# GENERAL
+# ========================
+# macOS metadata
+.DS_Store
+
+# PEM keys or certs
+*.pem
+
+# Local environment files
+.env
+.env.*
+
+# Test coverage
+/coverage/
+
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
