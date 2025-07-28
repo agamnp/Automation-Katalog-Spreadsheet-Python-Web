@@ -10,11 +10,11 @@ import logging
 
 
 
-def safe_print(msg):
+def safe_logger(msg):
     try:
-        print(msg)
+        logger(msg)
     except UnicodeEncodeError:
-        print(msg.encode('ascii', errors='ignore').decode())  # akan hilangkan emoji
+        logger(msg.encode('ascii', errors='ignore').decode())  # akan hilangkan emoji
 
 
 #pemangilan menu utama
@@ -283,9 +283,9 @@ def main_tampilan_sheet(logger=print):
         logger(f"✅ Proses sheet '{new_title}' selesai.")
         logger("")
 
-    print("🎉 Semua sheet selesai diproses!")
+    logger("🎉 Semua sheet selesai diproses!")
  except Exception as e:
         logger(f"❌ Terjadi error saat proses utama: {e}")  
 
 if __name__ == '__main__':
-    main_tampilan_sheet(logger=safe_print)
+    main_tampilan_sheet(logger=print)

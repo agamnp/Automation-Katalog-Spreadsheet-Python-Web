@@ -5,6 +5,8 @@ import inspect
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+import time
 
 MODULE_FOLDER = "Module"
 
@@ -16,6 +18,7 @@ app.add_middleware(
     allow_origins=["http://localhost:3000"],  # sesuaikan dengan alamat frontend
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True  # penting untuk SSE
 )
 
 class RunRequest(BaseModel):
@@ -41,6 +44,32 @@ def load_functions():
                     functions[name] = func
     return functions
 
+@app.get("/stream/{name}")
+def stream_function(name: str):
+    funcs = load_functions()
+    func = funcs.get(name)
+    if not func:
+        raise HTTPException(status_code=404, detail="Function not found")
+
+    def event_generator():
+        logs = []
+
+        def logger(msg):
+            logs.append(str(msg))
+
+        try:
+            func(logger=logger)
+        except Exception as e:
+            logs.append(f"❌ Terjadi error saat proses utama: {str(e)}")
+
+        # Kirim setiap baris log ke frontend
+        for line in logs:
+            yield f"data: {line}\n\n"
+            time.sleep(0.05)  # beri jeda kecil agar tidak 'banjir'
+
+        yield "data: ✅ Proses selesai\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/")
 def read_root():

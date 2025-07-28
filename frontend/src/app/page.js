@@ -16,43 +16,53 @@ export default function Page() {
       .catch(err => setOutput('❌ Gagal ambil daftar fungsi'));
   }, []);
 
-  const runFunction = async (name) => {
-    setLoading(true);
-    setOutput(`▶️ Menjalankan: ${name}...`);
-    const res = await fetch(`${API_BASE}/run`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    const data = await res.json();
+  const runFunction = (name) => {
+  setOutput('');
+  const eventSource = new EventSource(`${API_BASE}/stream/${name}`);
 
-    if (data.status === 'success') {
-      setOutput(`✅ Output:\n\n${data.output.join('\n')}`);
-    } else {
-      setOutput(`❌ Error:\n\n${data.error}`);
-    }
-    setLoading(false);
+  eventSource.onmessage = (e) => {
+    setOutput(prev => prev + '\n' + e.data);
   };
 
-  return (
-    <div style={{ padding: '2rem' }}>
-      <h1>📊 Automasi Google Sheet</h1>
-      <h2>🛠 Pilih Fungsi:</h2>
+  eventSource.onerror = (err) => {
+    setOutput(prev => prev + '\n❌ Error pada koneksi streaming.');
+    eventSource.close();
+  };
+};
+ 
 
-      {functions.length === 0 ? <p>Memuat fungsi...</p> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+  return (
+    <div style={{
+      fontFamily: 'Segoe UI, sans-serif',
+      padding: '2rem',
+      maxWidth: '700px',
+      margin: '0 auto',
+    }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '1rem' }}>📊 Automasi Google Sheet</h1>
+      <h2 style={{ marginBottom: '1rem' }}>🛠 Pilih Fungsi:</h2>
+
+      {functions.length === 0 ? (
+        <p>🔄 Memuat fungsi...</p>
+      ) : (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+        }}>
           {functions.map(fn => (
             <button
               key={fn}
               onClick={() => runFunction(fn)}
               disabled={loading}
               style={{
-                backgroundColor: '#2E8B57',
-                color: 'White',
-                padding: '10px',
+                backgroundColor: loading ? '#999' : '#4CAF50',
+                color: 'white',
+                padding: '0.75rem 1rem',
                 border: 'none',
                 borderRadius: '5px',
-                cursor: 'pointer'
+                fontSize: '1rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.3s ease'
               }}
             >
               {fn.replace('main_', '').replace(/_/g, ' ').toUpperCase()}
@@ -61,14 +71,21 @@ export default function Page() {
         </div>
       )}
 
+      {loading && (
+        <p style={{ marginTop: '1rem', color: '#666' }}>⏳ Sedang diproses...</p>
+      )}
+
       <h3 style={{ marginTop: '2rem' }}>📋 Output:</h3>
       <pre style={{
-        backgroundColor: '#eee',
-        color: 'Black',
+        backgroundColor: '#f4f4f4',
+        color: '#333',
         padding: '1rem',
         borderRadius: '8px',
         maxHeight: '400px',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        whiteSpace: 'pre-wrap',
+        lineHeight: '1.5',
+        fontFamily: 'Consolas, monospace'
       }}>
         {output}
       </pre>
