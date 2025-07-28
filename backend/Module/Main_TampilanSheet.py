@@ -22,13 +22,13 @@ def main_tampilan_sheet(logger=print):
  safe_logger("✅ Menjalankan tampilan sheet...", logger)
 
 # Konfigurasi logging
-logging.basicConfig(
-    filename='log_proses_katalog.txt',
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    encoding='utf-8'  # ✅ Tambahkan ini
-)
+# logging.basicConfig(
+#     filename='log_proses_katalog.txt',
+#     level=logging.INFO,
+#     format='%(asctime)s [%(levelname)s] %(message)s',
+#     datefmt='%Y-%m-%d %H:%M:%S',
+#     encoding='utf-8'  # ✅ Tambahkan ini
+# )
 
 # Setup autentikasi
 # Load environment variables dari .env file
