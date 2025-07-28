@@ -9,20 +9,25 @@ import re
 import logging
 
 
-def log(msg, logger=print):
-    logger(msg)
-    logging.info(msg)
+
+def safe_print(msg):
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(msg.encode('ascii', errors='ignore').decode())  # akan hilangkan emoji
+
 
 #pemangilan menu utama
 def main_tampilan_sheet(logger=print):
- logger("📄 Menjalankan tampilan sheet...")
+ logger("✅ Menjalankan tampilan sheet...")
 
 # Konfigurasi logging
 logging.basicConfig(
-    filename='log_proses_katalog.txt',   # Nama file log
-    level=logging.INFO,                  # Level log: DEBUG, INFO, WARNING, ERROR, CRITICAL
+    filename='log_proses_katalog.txt',
+    level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    encoding='utf-8'  # ⬅️ Ini yang penting!
 )
 
 # Setup autentikasi
@@ -43,7 +48,7 @@ def setup_google_sheets():
     return gspread.authorize(creds)
 
 # Autofill kolom
-def autofill_column_general(sheet, col_letter, start_row, value_or_formula, mode='static', start_number=1):
+def autofill_column_general(sheet, col_letter, start_row, value_or_formula, mode='static', start_number=1,logger=print):
     total_rows = len(sheet.col_values(3))  # Kolom C sebagai acuan
     last_row = max(total_rows, start_row)
     num_rows = last_row - start_row + 1
@@ -58,11 +63,11 @@ def autofill_column_general(sheet, col_letter, start_row, value_or_formula, mode
         sheet.update(range_name=autofill_range, values=values, value_input_option='USER_ENTERED')
     except Exception as e:
        
-        log(f"⚠️ Gagal mengisi kolom {col_letter}: {e}", logger)
+         logger(f"⚠️ Gagal mengisi kolom {col_letter}: {e}")
     time.sleep(1)  # Hindari over-quota    
     
 # Tambahkan rumus rekap
-def add_formulas(sheet,retries=3):
+def add_formulas(sheet,retries=3,logger=print):
     max_rows = len(sheet.col_values(3))
     max_rows = max(max_rows, 10)
     for attempt in range(retries):
@@ -80,12 +85,10 @@ def add_formulas(sheet,retries=3):
                         ]})
             break  # keluar loop jika berhasil
         except Exception as e:
-            print(f"⚠️ Gagal menambahkan rumus rekap (Attempt {attempt + 1}): {e}")
-            logger("📄 Menjalankan tampilan sheet...")
+            logger(f"✅ Gagal menambahkan rumus rekap (Attempt {attempt + 1}): {e}")
             time.sleep(5)  # tunggu sebelum coba lagi
     else:
-        print("❌ Gagal menambahkan rumus rekap setelah beberapa percobaan")
-        Logger("📄 Menjalankan tampilan sheet...")
+            logger("❌ Gagal menambahkan rumus rekap setelah beberapa percobaan")
 
 #tambahkan filter
 def ensure_filter_and_freeze(sheet,logger=print):
@@ -94,29 +97,22 @@ def ensure_filter_and_freeze(sheet,logger=print):
         header_values = sheet.row_values(9)
         last_col_index = len(header_values)
         if last_col_index == 0:
-           
-            Logger("📄 Menjalankan tampilan sheet...")
-            return
+         return
        # Konversi index ke notasi kolom (misal 27 → 'AA')
         last_col_letter = gspread.utils.rowcol_to_a1(1, last_col_index).rstrip('1')
         filter_range = f"A9:{last_col_letter}9"
         # Set filter dinamis
         sheet.set_basic_filter(filter_range)
-        msg = f"🔍 Filter     : {filter_range}"
-        Logger("📄 Menjalankan tampilan sheet...")
-        
-        logging.info(msg)
-        logger(msg)
-        
+        logger(f"🔍 Filter     : {filter_range}")
+                       
         # Set freeze ke baris 9 dan kolom 10 (kolom J)
         sheet.freeze(rows=9, cols=10)
         
-        msg = f"❄️  Freeze     : Baris 9, Kolom J"
-        print(msg)
-        logging.info(msg)
-        logger(msg)
+        
+        logger(f"❄️  Freeze     : Baris 9, Kolom J")
+        
     except Exception as e:
-        print(f"⚠️  Gagal mengatur filter/freeze: {e}")
+        logger(f"⚠️  Gagal mengatur filter/freeze: {e}")
 
 #nomor urut di spreadsheet
 def rename_sheets_from_index(spreadsheet, sheet_order_start, zero_pad=3):
@@ -140,13 +136,11 @@ def rename_sheet_with_number(spreadsheet, sheet, sheet_number,logger=print):
     if new_title != old_title:
         try:
             sheet.update_title(new_title)
-            msg = f"🔤 Rename     : '{old_title}' → '{new_title}'"
-            print(msg)
-            logging.info(msg)
-            logger(msg)
+            logger(f"✅ Rename     : '{old_title}' → '{new_title}'")
             sheet = spreadsheet.worksheet(new_title)
         except Exception as e:
-            print(f"⚠️ Gagal mengganti nama sheet '{old_title}': {e}")
+            logger(f"⚠️ Gagal mengganti nama sheet '{old_title}': {e}")
+            return sheet, old_title
     return sheet, new_title
 
 # === Rename Named Range ===
@@ -158,7 +152,8 @@ def create_named_range_from_sheet_name(spreadsheet_id, sheet, header_row=9, col_
     sheet_name = sheet.title
     clean_name = re.sub(r'[^a-zA-Z]', '', sheet_name)
     if not clean_name:
-        print(f"⚠️ Nama sheet '{sheet_name}' kosong setelah dibersihkan. Skip.")
+        logger(f"✅ Nama sheet '{sheet_name}' kosong setelah dibersihkan. Skip.")
+       
         return
 
     creds = Credentials.from_service_account_file(
@@ -171,7 +166,8 @@ def create_named_range_from_sheet_name(spreadsheet_id, sheet, header_row=9, col_
     sheet_id = next((s['properties']['sheetId'] for s in spreadsheet['sheets']
                      if s['properties']['title'] == sheet_name), None)
     if sheet_id is None:
-        print(f"⚠️ Sheet ID untuk '{sheet_name}' tidak ditemukan.")
+        logger(f"⚠️ Sheet ID untuk '{sheet_name}' tidak ditemukan.")
+
         return
 
     gc = setup_google_sheets()
@@ -182,13 +178,13 @@ def create_named_range_from_sheet_name(spreadsheet_id, sheet, header_row=9, col_
     col_values = ws.col_values(col_index)
     last_row = len(col_values)
     if last_row < header_row:
-        print(f"⚠️ Sheet '{sheet_name}' tidak punya data setelah baris header.")
+        logger(f"⚠️ Sheet '{sheet_name}' tidak punya data setelah baris header.")
         return
 
     # Clean named range name
     clean_name = re.sub(r'[^a-zA-Z]', '', sheet_name)
     if not clean_name:
-        print(f"⚠️ Nama sheet '{sheet_name}' kosong setelah dibersihkan.")
+        logger(f"⚠️ Nama sheet '{sheet_name}' kosong setelah dibersihkan.")
         return
 
     # Range tanpa sheet name untuk konversi
@@ -218,16 +214,12 @@ def create_named_range_from_sheet_name(spreadsheet_id, sheet, header_row=9, col_
         ).execute()
 
     
-    msg = f"🏷️ Named range '{clean_name}' Range → {range_a1}"
-    print(msg)
-    logging.info(msg)
-    logger(msg)
-
-
+    logger( f"🏷️ Named range '{clean_name}' Range → {range_a1}")
+    
 # Fungsi utama
 def main_tampilan_sheet(logger=print):
  try:
-    logger("📄 Menjalankan tampilan sheet...")
+    logger("✅ Menjalankan tampilan sheet...")
     spreadsheet_name = 'automasi katalog'
     excluded_sheets = ['Form Pengadaan', 'Hasil Seleksi', 'Referensi']
     Sheet_mulai = 1
@@ -237,10 +229,9 @@ def main_tampilan_sheet(logger=print):
     sh = gc.open(spreadsheet_name)
     worksheets = sh.worksheets()
 
-    msg =f"🔄 Mulai proses semua sheet...\n"
-    print(msg)
-    logger(msg)
-
+  
+    logger(f"🔄 Mulai proses semua sheet...\n")
+   
     
     sheet_number = Sheet_mulai if Sheet_mulai > 0 else 1
 
@@ -248,9 +239,9 @@ def main_tampilan_sheet(logger=print):
     for i, sheet in enumerate(worksheets[START_SHEET_INDEX:], start=START_SHEET_INDEX):
         if sheet.title in excluded_sheets:
             
-            msg =f"➡️ Sheet '{sheet.title}' dilewati."
-            print(msg)
-            logger(msg)
+            
+            logger(f"➡️ Sheet '{sheet.title}' dilewati.")
+            
             continue
 
         # Rename sheet dulu agar nama yang dipakai konsisten
@@ -258,38 +249,30 @@ def main_tampilan_sheet(logger=print):
         sheet_number += 1
 
        
-        msg = f"✅ Memproses Sheet: {new_title}"
-        print(msg)
-        logging.info(msg)
-        logger(msg)
+        logger( f"✅ Memproses Sheet: {new_title}")
+        
 
 
         # Nomor urut di kolom A
         autofill_column_general(sheet, 'A', START_ROW, '', mode='number')
         
-        msg = "✅ Nomor urut di kolom A selesai"
-        print(msg)
-        logging.info(msg) 
-        logger(msg)
+        logger( "✅ Nomor urut di kolom A selesai")
+        
 
         autofill_column_general(sheet, 'B', START_ROW,'=HYPERLINK("https://mocostore.moco.co.id/catalog/"&AB{row};"Klik Disini")',mode='dynamic')
        
-        msg = "✅ Kolom B diisi hyperlink"
-        print(msg)
-        logging.info(msg) 
-        logger(msg)
+        logger( "✅ Kolom B diisi hyperlink")
+        
         autofill_column_general(sheet, 'AA', START_ROW, '=Y{row}*Z{row}', mode='dynamic')
        
-        msg = f"✅ Kolom AA dihitung dari Y*Z"
-        print(msg)
-        logging.info(msg) 
-        logger(msg)
+        logger(f"✅ Kolom AA dihitung dari Y*Z")
+        
         # Tambah filter dan freeze jika belum
-        ensure_filter_and_freeze(sheet)
+        ensure_filter_and_freeze(sheet,logger=print)
         # Tambahkan rumus rekap
-        add_formulas(sheet)
+        add_formulas(sheet,logger=print)
 
-        # 🔁 Tambah named range dari nama sheet (bersih)
+        # ✅ Tambah named range dari nama sheet (bersih)
         create_named_range_from_sheet_name(
         spreadsheet_id=sh.id,
         sheet=sheet,
@@ -297,16 +280,12 @@ def main_tampilan_sheet(logger=print):
         col_start='J',
         col_end='J'
         )
-        msg = f"🎯 Proses sheet '{new_title}' selesai."
-        print(msg)
-        logging.info(msg) 
-        logger(msg)
-        print("")
+        logger(f"✅ Proses sheet '{new_title}' selesai.")
         logger("")
 
     print("🎉 Semua sheet selesai diproses!")
  except Exception as e:
         logger(f"❌ Terjadi error saat proses utama: {e}")  
 
-#if __name__ == '__main__':
-#    main()
+if __name__ == '__main__':
+    main_tampilan_sheet(logger=safe_print)

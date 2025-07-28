@@ -41,6 +41,11 @@ def load_functions():
                     functions[name] = func
     return functions
 
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello from FastAPI!"}
+
 @app.get("/functions")
 def get_functions():
     funcs = load_functions()
