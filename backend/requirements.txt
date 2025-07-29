@@ -1,6 +1,5 @@
-fastapi
-uvicorn
-gspread
-google-auth
-python-dotenv
-google-api-python-client
+fastapi==0.116.1
+google_api_python_client==2.177.0
+gspread==6.2.1
+protobuf==6.31.1
+python-dotenv==1.1.1
